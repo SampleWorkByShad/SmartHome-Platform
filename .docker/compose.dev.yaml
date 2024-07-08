@@ -1,0 +1,66 @@
+name: smarthome-platform
+
+services:
+  db:
+    image: postgres:12
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - platform
+    env_file: ../.env/db.env
+
+  cms:
+    build:
+      context: ../cms/
+      dockerfile: .devcontainer/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ../cms:/app:cached
+    ports:
+      - "3000:3000"
+    networks:
+      - platform
+    env_file:
+      - ../.env/auth.env 
+      - ../.env/cms.env
+    depends_on:
+      - db
+    user: root
+    command: sleep infinity
+  
+  bus:
+    image: bitnami/kafka:3.3.2
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    networks:
+      - platform
+    env_file: ../.env/bus.env
+    extra_hosts:
+      - "kafka:0.0.0.0"
+
+  api:
+    image: node:22
+    restart: unless-stopped
+    volumes:
+      - ../api:/app:cached
+    ports:
+      - "4000:4000"
+    networks:
+      - platform
+    env_file:
+      - ../.env/auth.env 
+      - ../.env/api.env
+    depends_on:
+      - db
+      - bus
+    command: sleep infinity
+
+volumes:
+  pgdata:
+
+networks:
+  platform:
